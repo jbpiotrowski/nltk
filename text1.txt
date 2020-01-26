@@ -1,0 +1,1 @@
+"""Google po cichu rozwin¹³ nowy sposób dla u¿ytkowników Androida, aby s³uchaæ podcastów i zapisaæ siê do pokazów, które lubi¹, i to ju¿ dzia³a na telefonie. Firma Pacific Content, zajmuj¹ca siê produkcj¹ podcastów, otrzyma³a ekskluzywny tekst, który pochodzi z Google News."""

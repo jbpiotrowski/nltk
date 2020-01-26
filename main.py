@@ -1,9 +1,9 @@
 from __future__ import division
-
 import nltk
 import string
 import operator
 from functools import reduce
+from timeit import default_timer as timer
 
 
 def ilen(iterable):
@@ -86,27 +86,20 @@ class RakeKeywordExtractor:
 
 def test():
     rake = RakeKeywordExtractor()
-#     keywords = rake.extract("""
-# Compatibility of systems of linear constraints over the set of natural
-# numbers. Criteria of compatibility of a system of linear Diophantine
-# equations, strict inequations, and nonstrict inequations are considered.
-# Upper bounds for components of a minimal set of solutions and algorithms
-# of construction of minimal generating sets of solutions for all types of
-# systems are given. These criteria and the corresponding algorithms for
-# constructing a minimal supporting set of solutions can be used in solving
-# all the considered types of systems and systems of mixed types.
-#   """, incl_scores=True)
-    keywords = rake.extract("""
-    Kompatybilność liniowych systemów jest ograniczona przez zbiór liczb naturalnych. Kryteria kompatybilności liniowego systemu Diophantine są badane. 
-      """, incl_scores=True)
 
-    print(keywords)
+    filename = input("Input filename:")
 
-#     keywords = rake.extract("""Google quietly rolled out a new way for Android users to listen
-# to podcasts and subscribe to shows they like, and it already works on
-# your phone. Podcast production company Pacific Content got the exclusive
-# on it.This text is taken from Google news.""", incl_scores=True)
-#     print(keywords)
+    with open(filename, 'r') as reader:
+        contents = reader.read()
+        start = timer()
+        keywords = rake.extract(contents, incl_scores=True)
+        end = timer()
+
+    print("(Keyword, Score)")
+    print(*keywords, sep='\n')
+    print("Elapsed time in sec: " + str(end-start))
+
 
 if __name__ == "__main__":
-    test()
+    while True:
+        test()
