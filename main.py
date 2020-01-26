@@ -2,8 +2,10 @@ from __future__ import division
 import nltk
 import string
 import operator
+from stempel import StempelStemmer
 from functools import reduce
 from timeit import default_timer as timer
+from enum import Enum
 
 
 def ilen(iterable):
@@ -22,23 +24,43 @@ def isNumeric(word):
         return False
 
 
+class RakeCalculateMethod(Enum):
+    Frequency = 1
+    Degree = 2
+    DegreeByFreq = 3
+
+
 class RakeKeywordExtractor:
 
-    def __init__(self):
-        self.stopwords = set(nltk.corpus.stopwords.words())
+    def __init__(self, word_count, calculate_method, do_lemmatize, stemmer):
+        self.stemmer = stemmer
+        self.word_count = word_count - 1
+        self.calculate_method = calculate_method
+        self.do_lemmatize = do_lemmatize
+        self.stopwords = set(nltk.corpus.stopwords.words('polish'))
         self.top_fraction = 1  # consider top third candidate keywords by score
 
     def _generate_candidate_keywords(self, sentences):
         phrase_list = []
         for sentence in sentences:
-            words = map(lambda x: "|" if x in self.stopwords else x,
-                        nltk.word_tokenize(sentence.lower()))
+            if self.do_lemmatize:
+                words = map(lambda x: "|" if x in self.stopwords else self.stemmer.stem(x),
+                            nltk.word_tokenize(sentence.lower(), 'polish'))
+            else:
+                words = map(lambda x: "|" if x in self.stopwords else x,
+                            nltk.word_tokenize(sentence.lower(), 'polish'))
             phrase = []
-            for word in words:
+            words_list = list(words)
+            while any(words_list):
+                word = words_list.pop(0)
                 if word == "|" or isPunct(word):
                     if len(phrase) > 0:
                         phrase_list.append(phrase)
                         phrase = []
+                elif len(phrase) > self.word_count:
+                    phrase_list.append(phrase)
+                    phrase = []
+                    words_list.insert(0, word)
                 else:
                     phrase.append(word)
         return phrase_list
@@ -48,19 +70,20 @@ class RakeKeywordExtractor:
         word_degree = nltk.FreqDist()
         for phrase in phrase_list:
             degree = ilen(filter(lambda x: not isNumeric(x), phrase)) - 1
-            # l = [x for x in phrase if not isNumeric(x)]
-            # degree = len(l) -1
             for word in phrase:
                 word_freq[word] += 1
                 word_degree[word] += degree
-                # word_freq.update([word])
-                # word_degree.update([word, degree])  # other words
         for word in word_freq.keys():
             word_degree[word] = word_degree[word] + word_freq[word]  # itself
         # word score = deg(w) / freq(w)
         word_scores = {}
         for word in word_freq.keys():
-            word_scores[word] = word_degree[word] / word_freq[word]
+            word_scores[word] = {
+                RakeCalculateMethod.Frequency: word_freq[word],
+                RakeCalculateMethod.Degree: word_degree[word],
+                RakeCalculateMethod.DegreeByFreq: word_degree[word] / word_freq[word]
+            }[self.calculate_method]
+
         return word_scores
 
     def _calculate_phrase_scores(self, phrase_list, word_scores):
@@ -89,11 +112,14 @@ class RakeKeywordExtractor:
 
 
 def test():
-    rake = RakeKeywordExtractor()
 
-    filename = input("Input filename:")
-
-    with open(filename, 'r') as reader:
+    filename = input("Input filename: ")
+    word_count = int(input("Podaj maksymalną liczbę słów w fazie kluczowej: "))
+    rake_method = RakeCalculateMethod(int(input("Wybierz metodę obliczania wag dla fraz kluczowych : "
+                                                "\n1-Częstotliwość\n2-Stopień\n3-stosunek stopnia do częstotliwości\n")))
+    support_lemmatization = input("Czy lematyzować słowa?\n") == 'y'
+    rake = RakeKeywordExtractor(word_count, rake_method, support_lemmatization, stemmer)
+    with open(filename, 'r', encoding='utf-8') as reader:
         contents = reader.read()
         start = timer()
         keywords = rake.extract(contents, incl_scores=True)
@@ -105,5 +131,6 @@ def test():
 
 
 if __name__ == "__main__":
+    stemmer = StempelStemmer.polimorf()
     while True:
         test()
