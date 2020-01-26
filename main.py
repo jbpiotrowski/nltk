@@ -25,14 +25,14 @@ def isNumeric(word):
 class RakeKeywordExtractor:
 
     def __init__(self):
-        self.stopwords = set(nltk.corpus.stopwords.words('polish'))
+        self.stopwords = set(nltk.corpus.stopwords.words())
         self.top_fraction = 1  # consider top third candidate keywords by score
 
     def _generate_candidate_keywords(self, sentences):
         phrase_list = []
         for sentence in sentences:
             words = map(lambda x: "|" if x in self.stopwords else x,
-                        nltk.word_tokenize(sentence.lower(), 'polish'))
+                        nltk.word_tokenize(sentence.lower()))
             phrase = []
             for word in words:
                 if word == "|" or isPunct(word):
@@ -48,9 +48,13 @@ class RakeKeywordExtractor:
         word_degree = nltk.FreqDist()
         for phrase in phrase_list:
             degree = ilen(filter(lambda x: not isNumeric(x), phrase)) - 1
+            # l = [x for x in phrase if not isNumeric(x)]
+            # degree = len(l) -1
             for word in phrase:
-                word_freq.update([word])
-                word_degree.update([word, degree])  # other words
+                word_freq[word] += 1
+                word_degree[word] += degree
+                # word_freq.update([word])
+                # word_degree.update([word, degree])  # other words
         for word in word_freq.keys():
             word_degree[word] = word_degree[word] + word_freq[word]  # itself
         # word score = deg(w) / freq(w)
@@ -97,7 +101,7 @@ def test():
 
     print("(Keyword, Score)")
     print(*keywords, sep='\n')
-    print("Elapsed time in sec: " + str(end-start))
+    print("Elapsed time in sec: " + str(end - start))
 
 
 if __name__ == "__main__":
