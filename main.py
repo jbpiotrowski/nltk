@@ -6,6 +6,8 @@ from stempel import StempelStemmer
 from functools import reduce
 from timeit import default_timer as timer
 from enum import Enum
+from rake_nltk import Metric, Rake
+
 
 
 def ilen(iterable):
@@ -29,6 +31,11 @@ class RakeCalculateMethod(Enum):
     Degree = 2
     DegreeByFreq = 3
 
+class RakeMetric(Enum):
+    WORD_FREQUENCY = 1
+    WORD_DEGREE = 2
+    DEGREE_TO_FREQUENCY_RATIO = 3
+
 
 class RakeKeywordExtractor:
 
@@ -38,7 +45,7 @@ class RakeKeywordExtractor:
         self.calculate_method = calculate_method
         self.do_lemmatize = do_lemmatize
         self.stopwords = set(nltk.corpus.stopwords.words('polish'))
-        self.top_fraction = 1  # consider top third candidate keywords by score
+        self.top_fraction = 1
 
     def _generate_candidate_keywords(self, sentences):
         phrase_list = []
@@ -74,8 +81,7 @@ class RakeKeywordExtractor:
                 word_freq[word] += 1
                 word_degree[word] += degree
         for word in word_freq.keys():
-            word_degree[word] = word_degree[word] + word_freq[word]  # itself
-        # word score = deg(w) / freq(w)
+            word_degree[word] = word_degree[word] + word_freq[word]
         word_scores = {}
         for word in word_freq.keys():
             word_scores[word] = {
@@ -114,20 +120,34 @@ class RakeKeywordExtractor:
 def test():
 
     filename = input("Input filename: ")
-    word_count = int(input("Podaj maksymalną liczbę słów w fazie kluczowej: "))
-    rake_method = RakeCalculateMethod(int(input("Wybierz metodę obliczania wag dla fraz kluczowych : "
-                                                "\n1-Częstotliwość\n2-Stopień\n3-stosunek stopnia do częstotliwości\n")))
-    support_lemmatization = input("Czy lematyzować słowa?\n") == 'y'
+    word_count = int(input("Max word count of phrase: "))
+    input_metric = int(input("Choose word metric : "
+                                                "\n1-Freq (Częstotliwość)\n2-Degree (Stopień)\n3-Degree to Freq Ratio (Stosunek stopnia do częstotliwości)\n"))
+    rake_method = RakeCalculateMethod(input_metric)
+    support_lemmatization = input("Include lematization?\n") == 'y'
     rake = RakeKeywordExtractor(word_count, rake_method, support_lemmatization, stemmer)
+    rake_nltk = Rake(language='polish', min_length=1, max_length=word_count,
+                            ranking_metric="Metric." + str(RakeMetric(input_metric)))
     with open(filename, 'r', encoding='utf-8') as reader:
         contents = reader.read()
         start = timer()
         keywords = rake.extract(contents, incl_scores=True)
         end = timer()
 
+        rake_nltk.extract_keywords_from_text(contents)
+        start2 = timer()
+        keywords_nltk = rake_nltk.get_ranked_phrases_with_scores()
+        end2 = timer()
+
+    print ("Implemented algorithm")
     print("(Keyword, Score)")
     print(*keywords, sep='\n')
     print("Elapsed time in sec: " + str(end - start))
+
+    print("Rake NLTK")
+    print("(Score, Keyword)")
+    print(*keywords_nltk, sep='\n')
+    print("Elapsed time in sec: " + str(end2 - start2))
 
 
 if __name__ == "__main__":
